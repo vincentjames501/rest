@@ -61,7 +61,7 @@
 			/*jshint maxcomplexity:20 */
 			return new responsePromise.ResponsePromise(function (resolve, reject) {
 
-				var options, clientRequest, client, url, headers, entity, response;
+				var options, clientRequest, client, url, headers, entity, response, isMultiPart;
 
 				request = typeof request === 'string' ? { path: request } : request || {};
 				response = { request: request };
@@ -84,10 +84,17 @@
 				Object.keys(request.headers || {}).forEach(function (name) {
 					headers[normalizeHeaderName(name)] = request.headers[name];
 				});
+				isMultiPart = !!(headers['Content-Type'] && headers['Content-Type'].match(/multipart\/*/i));
 				if (!headers['Content-Length']) {
-					headers['Content-Length'] = entity ? Buffer.byteLength(entity, 'utf8') : 0;
+					if (isMultiPart) {
+						headers['Content-Length'] = entity ? entity.getLengthSync() : 0;
+					} else {
+						headers['Content-Length'] = entity ? Buffer.byteLength(entity, 'utf8') : 0;
+					}
 				}
-
+				if (isMultiPart) {
+					headers['Content-Type'] = entity.getHeaders()['content-type'];
+				}
 				request.canceled = false;
 				request.cancel = function cancel() {
 					request.canceled = true;
@@ -131,10 +138,14 @@
 				});
 
 				if (entity) {
-					clientRequest.write(entity);
+					if (isMultiPart) {
+						entity.pipe(clientRequest);
+					} else {
+						clientRequest.write(entity);
+					}
 				}
-				clientRequest.end();
 
+				clientRequest.end();
 			});
 		});
 

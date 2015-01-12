@@ -12,13 +12,16 @@
 
 	define(function (/* require */) {
 
+		var isNode = typeof FormData === 'undefined';
+		var FormData = FormData || require('form-data');
+
 		function isFormElement(object) {
 			return object &&
 				object.nodeType === 1 && // Node.ELEMENT_NODE
 				object.tagName === 'FORM';
 		}
 
-		function createFormDataFromObject(object) {
+		function createFormDataFromObjectBrowser(object) {
 			var formData = new FormData();
 
 			var value;
@@ -32,6 +35,24 @@
 						formData.append(property, value);
 					} else {
 						formData.append(property, String(value));
+					}
+				}
+			}
+
+			return formData;
+		}
+
+		function createFormDataFromObjectNode(object) {
+			var formData = new FormData();
+
+			var value;
+			for (var property in object) {
+				if (object.hasOwnProperty(property)) {
+					value = object[property];
+					if (value && value.options && value.value) {
+						formData.append(property, value.value, value.options)
+					} else {
+						formData.append(property, value);
 					}
 				}
 			}
@@ -58,7 +79,11 @@
 
 				// Support plain objects, may contain File/Blob as value.
 				if (typeof object === 'object' && object !== null) {
-					return createFormDataFromObject(object);
+					if (isNode) {
+						return createFormDataFromObjectNode(object);
+					} else {
+						return createFormDataFromObjectBrowser(object);
+					}
 				}
 
 				throw new Error('Unable to create FormData from object ' + object);

@@ -36,7 +36,8 @@
 		}
 	],
 	"dependencies": {
-		"when": "~3"
+		"when": "~3",
+		"form-data": "^0.2.0"
 	},
 	"devDependencies": {
 		"wire": "~0.9",
